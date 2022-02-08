@@ -1,13 +1,37 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { ethers } from "ethers";
 import "./App.css";
 import abi from "./utils/WavePortal.json";
 
+const formReducer = (state, event) => {
+ return {
+   ...state,
+   [event.name]: event.value
+ }
+}
+
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState("");
+  const [allWaves, setAllWaves] = useState([]);
+  
+  const [formData, setFormData] = useReducer(formReducer, {
+   //message: "Default message",
+ });
 
-  const contractAddress = "0xe898D056C89B75BF154EcC9204B45bD816e6bB2f";
+  const contractAddress = "0x21d64Dc337a95b60273D070039FEe388ef9FFF24";
   const contractABI = abi.abi;
+
+  const handleChange = event => {
+    setFormData({
+      name: event.target.name,
+      value: event.target.value,
+    });
+  }
+
+  const handleSubmit = event => {
+    event.preventDefault();
+    alert('You have submitted the form.');
+ }
   
   const checkIfWalletIsConnected = async () => {
     try {
@@ -26,6 +50,8 @@ const App = () => {
         const account = accounts[0];
         console.log("Found an authorized account:", account);
         setCurrentAccount(account);
+        console.log("Calling getAllWaves())");
+        getAllWaves();
       } else {
         console.log("No authorized account found")
       }
@@ -55,7 +81,48 @@ const App = () => {
     }
   }
 
-const wave = async () => {
+  /*
+   * Create a method that gets all waves from your contract
+   */
+  const getAllWaves = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        /*
+         * Call the getAllWaves method from your Smart Contract
+         */
+        const waves = await wavePortalContract.getAllWaves();
+
+        /*
+         * We only need address, timestamp, and message in our UI so let's
+         * pick those out
+         */
+        let wavesCleaned = [];
+        waves.forEach(wave => {
+          wavesCleaned.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message
+          });
+        });
+
+        /*
+         * Store our data in React State
+         */
+        setAllWaves(wavesCleaned);
+      } else {
+        console.log("Ethereum object doesn't exist!")
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }  
+
+  const wave = async () => {
     try {
       const { ethereum } = window;
 
@@ -70,7 +137,8 @@ const wave = async () => {
         /*
         * Execute the actual wave from your smart contract
         */
-        const waveTxn = await wavePortalContract.wave();
+        const waveTxn = await wavePortalContract.wave(formData.message);
+        //const waveTxn = await wavePortalContract.wave("TESTING123");
         console.log("Mining...", waveTxn.hash);
 
         await waveTxn.wait();
@@ -103,6 +171,16 @@ const wave = async () => {
         Connect your Ethereum wallet and wave at me!
         </div>
 
+        <br /><br />
+
+        <form onSubmit={handleSubmit}>
+        <label>
+          Message:&nbsp;&nbsp;
+        </label>
+        <input type="text" name="message" onChange={handleChange} value={formData.message || ''} placeholder="Enter your message here..." />
+          {/*<input type="submit" value="Submit" />*/}
+        </form>
+
         <button className="waveButton" onClick={wave}>
           Wave at Me
         </button>
@@ -116,8 +194,17 @@ const wave = async () => {
           </button>
         )}
 
+        {allWaves.map((wave, index) => {
+          return (
+            <div key={index} style={{ backgroundColor: "OldLace", marginTop: "16px", padding: "8px" }}>
+              <div>Address: {wave.address}</div>
+              <div>Time: {wave.timestamp.toString()}</div>
+              <div>Message: {wave.message}</div>
+            </div>)
+        })}
       </div>
     </div>
-    );
-  }
+  );
+}
+
 export default App

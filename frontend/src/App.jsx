@@ -18,7 +18,7 @@ const App = () => {
    //message: "Default message",
  });
 
-  const contractAddress = "0x5b8763f54B51519752FAD034CB6481A666a1654a";
+  const contractAddress = "0x964Edb53bfD91963D7C4F697f9f7Ed6BB4bCfe30";
   const contractABI = abi.abi;
 
   const handleChange = event => {
